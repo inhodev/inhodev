@@ -271,7 +271,7 @@ def build_hero(D):
 
 <text x="30" y="86" font-family="{SANS}" font-size="14" font-weight="700" fill="{CYAN}" letter-spacing="1.5">총 소비한 AI 토큰</text>
 <text x="30" y="146" font-family="{MONO}" font-size="46" font-weight="700" fill="url(#num)" letter-spacing="-1">{digits}</text>
-<text x="30" y="176" font-family="{SANS}" font-size="13" fill="{MUTED}">= {human(total)}개 · 이 컴퓨터의 세션 로그 전수 집계, 추정이 아니라 실측</text>
+<text x="30" y="176" font-family="{SANS}" font-size="13" fill="{MUTED}">{human(total)}개 · 세션 로그를 전부 훑어서 센 값이다. 추정치가 아니다</text>
 
 <rect x="0" y="208" width="{W}" height="92" fill="url(#scrim)"/>
 <rect x="30" y="212" width="{W - 60}" height="1" fill="{LINE}"/>
@@ -395,14 +395,14 @@ def build_skyline(D):
 <rect width="{W}" height="{H}" rx="14" fill="url(#halo)"/>
 
 <text x="28" y="40" font-family="{SANS}" font-size="17" font-weight="800" fill="{TEXT}">토큰 스카이라인</text>
-<text x="28" y="60" font-family="{SANS}" font-size="12.5" fill="{MUTED}">탑 하나 = 하루치 에이전트 작업 · 높이는 로그 스케일</text>
+<text x="28" y="60" font-family="{SANS}" font-size="12.5" fill="{MUTED}">탑 하나가 하루다 · 높이는 로그 스케일</text>
 <text x="{W - 28}" y="40" text-anchor="end" font-family="{SANS}" font-size="19" font-weight="800" fill="{CYAN}">{human(s["totalTokens"])}</text>
 <text x="{W - 28}" y="60" text-anchor="end" font-family="{SANS}" font-size="12" fill="{DIM}">{s["activeDays"]}/{s["totalDays"]}일 활동 · {tm.get("sessionCount", 0):,}세션</text>
 
 <g transform="translate({dx:.2f},{dy:.2f}) scale({k:.4f})">{"".join(boxes)}</g>
 {"".join(months)}
 
-<text x="28" y="{H - 26}" font-family="{SANS}" font-size="12.5" fill="{MUTED}">최고 기록 {peak["date"]} — 하루에 {human(peak["totals"]["tokens"])}</text>
+<text x="28" y="{H - 26}" font-family="{SANS}" font-size="12.5" fill="{MUTED}">가장 많이 쓴 날 {peak["date"]} · 하루에 {human(peak["totals"]["tokens"])}</text>
 <text x="{lx0 - 20}" y="{H - 25}" text-anchor="end" font-family="{SANS}" font-size="11.5" fill="{DIM}">한산</text>
 {"".join(legend)}
 <text x="{W - 28}" y="{H - 25}" text-anchor="end" font-family="{SANS}" font-size="11.5" fill="{DIM}">폭주</text>
@@ -464,7 +464,7 @@ def build_hud(D):
         f'<text x="{pad}" y="{top_h + 44}" font-family="{SANS}" font-size="16" font-weight="800" fill="{TEXT}">월별 소비량</text>'
     )
     out.append(
-        f'<text x="{pad}" y="{top_h + 62}" font-family="{SANS}" font-size="11.5" fill="{DIM}">막대 = 토큰 · 아래 숫자는 추정 비용</text>'
+        f'<text x="{pad}" y="{top_h + 62}" font-family="{SANS}" font-size="11.5" fill="{DIM}">막대는 토큰, 아래 숫자는 추정 비용</text>'
     )
 
     mxm = max(v[0] for _, v in months)
@@ -504,8 +504,8 @@ IMG_START, IMG_END = "<!-- IMAGES:START -->", "<!-- IMAGES:END -->"
 # new content = the old picture served indefinitely. Appending a content hash
 # gives every rebuild a fresh URL.
 CARDS = [
-    ("hero.svg", "총 소비한 AI 토큰 — 추정이 아니라 실측"),
-    ("skyline.svg", "토큰 스카이라인 — 탑 하나가 하루치 작업"),
+    ("hero.svg", "총 소비한 AI 토큰, 추정치가 아니라 직접 센 값"),
+    ("skyline.svg", "토큰 스카이라인, 탑 하나가 하루"),
     ("hud.svg", "런타임별 분포와 월별 소비량"),
 ]
 
@@ -548,27 +548,27 @@ def inject_readme(D, stats):
     cf = D["factors"].get("codex")
 
     rows = [
-        ("기간", f'`{r["start"]} → {r["end"]}` — {stats["totalDays"]}일 중 **{stats["activeDays"]}일 활동**'),
+        ("기간", f'`{r["start"]} → {r["end"]}` · {stats["totalDays"]}일 중 **{stats["activeDays"]}일 활동**'),
         ("총 토큰", f'**{stats["totalTokens"]:,}** ({human(stats["totalTokens"])})'),
         ("메시지", f'{stats["messages"]:,}'),
         ("세션", f'{stats["sessions"]:,}'),
-        ("에이전트 가동시간", f'{hours:,.0f}시간 — 138일 안에 **약 {hours / 24:.0f}일치** 연산'),
+        ("에이전트 가동시간", f'{hours:,.0f}시간 · 달력으로는 {stats["totalDays"]}일인데 실제 연산은 **약 {hours / 24:.0f}일치**'),
         ("최장 연속 가동", f'{stats["longestContinuousHours"]:,.1f}시간'),
         ("최대 동시 세션", f'{stats["maxConcurrentSessions"]}개'),
-        ("하루 최고 기록", f'`{peak["date"]}` — {human(peak["totals"]["tokens"])}'),
+        ("가장 많이 쓴 날", f'`{peak["date"]}` · {human(peak["totals"]["tokens"])}'),
         ("모델 / 런타임", f'{stats["models"]}종 / {len(stats["clients"])}개'),
     ]
     if cf:
         rows.append(
             ("Codex 실측 커버리지",
-             f'**{cf["measured"] / cf["target"] * 100:.2f}%** — 공식 {cf["target"]:,} 중 '
-             f'{cf["measured"]:,}을 로컬 로그에서 일자별로 복원')
+             f'**{cf["measured"] / cf["target"] * 100:.2f}%** · 공식 집계 {cf["target"]:,} 중 '
+             f'{cf["measured"]:,}을 로컬 로그에서 날짜별로 복원했다')
         )
     table = "| | |\n|---|---|\n" + "\n".join(f"| {k} | {v} |" for k, v in rows)
 
     block = (
         f"{START}\n\n{table}\n\n"
-        f"<sub><code>scripts/build_assets.py</code>가 생성한 표입니다. 직접 고쳐도 다음 빌드에 덮어써집니다.</sub>\n\n"
+        f"<sub>이 표는 <code>scripts/build_assets.py</code>가 만든다. 직접 고쳐도 다음 빌드에 덮어쓴다.</sub>\n\n"
         f"{END}"
     )
     head, _, rest = text.partition(START)

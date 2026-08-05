@@ -1,16 +1,16 @@
 {
-  "_why": [
-    "Local Codex session logs cover 6,872 rollout files across two directories (~/.codex/sessions and ~/.codex/archived_sessions, session IDs disjoint, both merged by scripts/merge_scans.py).",
-    "Those logs account for 28.06B tokens of real, per-message, per-day data = 96.53% of what OpenAI reports for the account.",
-    "The remaining 3.47% has no local source left to match against - those sessions were pruned before they were ever scanned, and the provider exposes no per-day API to recover them.",
-    "So: the daily curve is measured, and the 1.01B residual is spread across days in proportion to measured activity. It is a rounding correction on top of real data, not a fabricated shape."
+  "_설명": [
+    "로컬 Codex 세션 로그는 두 디렉터리(~/.codex/sessions, ~/.codex/archived_sessions)에 흩어져 있고 롤아웃 파일이 6,872개다. 세션 ID가 서로 겹치지 않아 scripts/merge_scans.py가 그냥 합친다.",
+    "이 로그로 실제로 센 양이 280.6억이고, OpenAI가 계정 기준으로 집계한 290.7억의 96.53%에 해당한다. 전부 메시지 단위, 날짜 단위로 남아 있는 실측치다.",
+    "나머지 3.47%는 대조할 원본이 로컬에 없다. 스캔하기 전에 정리돼 사라진 세션이고, 날짜별로 되살릴 수 있는 API도 없다.",
+    "그래서 날짜별 곡선은 전부 실측이고, 남는 10.1억만 실측된 활동량에 비례해 나눠 넣었다. 없는 모양을 지어낸 게 아니라 실측 위에 얹은 보정값이다."
   ],
   "codex": {
     "reportedTotalTokens": 29070000000,
     "measuredLocally": 28062310711,
     "measuredCoverage": 0.9653,
     "accountCount": 2,
-    "source": "OpenAI account usage pages (two accounts: 15.01B + 14.06B)",
+    "source": "OpenAI 계정 사용량 페이지 (계정 2개: 150.1억 + 140.6억)",
     "asOf": "2026-08-05"
   }
 }

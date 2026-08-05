@@ -33,7 +33,7 @@
 
 <text x="30" y="86" font-family="'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="14" font-weight="700" fill="#22d3ee" letter-spacing="1.5">총 소비한 AI 토큰</text>
 <text x="30" y="146" font-family="ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace" font-size="46" font-weight="700" fill="url(#num)" letter-spacing="-1">34,004,134,923</text>
-<text x="30" y="176" font-family="'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#78839c">= 340억개 · 이 컴퓨터의 세션 로그 전수 집계, 추정이 아니라 실측</text>
+<text x="30" y="176" font-family="'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="13" fill="#78839c">340억개 · 세션 로그를 전부 훑어서 센 값이다. 추정치가 아니다</text>
 
 <rect x="0" y="208" width="700" height="92" fill="url(#scrim)"/>
 <rect x="30" y="212" width="640" height="1" fill="#161d2e"/>
