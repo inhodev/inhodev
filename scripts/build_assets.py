@@ -6,11 +6,18 @@ data/graph.json comes from `bash scripts/refresh.sh`, which scans every local
 agent store and merges the results. Every number rendered below is read from
 that file — nothing here is hand-written.
 
-Design rules for GitHub READMEs:
-  * SVG is embedded via <img>, so SMIL animation works but <a> and hover
-    tooltips do not. Keep anything clickable in markdown, not in the image.
-  * prefers-color-scheme is unreliable through GitHub's image proxy, so every
-    card paints its own dark panel and reads the same in both themes.
+Design rules for GitHub READMEs — each one learned the hard way:
+  * KEEP EVERY ASSET STATIC. Animation elements do not survive into the README
+    render, so anything that starts at opacity="0" and fades in via <animate>
+    is invisible forever. That silently ate the headline number, the stat chips
+    and every coloured skyline tower on the first deploy.
+  * Images are proxied and CACHED BY URL. Same path + new bytes = the old
+    picture served indefinitely. inject_images() appends a content hash to each
+    <img src> so a rebuild always lands on a URL the proxy has never seen.
+  * <a> and hover tooltips inside the SVG do nothing. Keep anything clickable
+    in markdown instead.
+  * prefers-color-scheme is unreliable through the proxy, so every card paints
+    its own dark panel and reads the same in both GitHub themes.
   * No external fonts, no external anything — the proxy blocks it.
 """
 from __future__ import annotations
