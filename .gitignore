@@ -1,3 +1,4 @@
 preview*.html
 __pycache__/
 .DS_Store
+profile-3d-contrib/
