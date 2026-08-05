@@ -32,7 +32,10 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "graph.json"
 OUT = ROOT / "assets"
 
-W = 1280  # every card is this wide so the README reads as one slab
+# GitHub's profile README column is ~690px. Anything wider gets scaled down and
+# the type shrinks with it — 1280 rendered at 0.54x and was unreadable. Draw at
+# the real display width so 13px type stays 13px.
+W = 700
 
 # ---------------------------------------------------------------- palette
 INK = "#04050a"
@@ -69,8 +72,12 @@ CLIENT_LABEL = {
     "antigravity-cli": "Antigravity",
 }
 
-MONO = "ui-monospace,'SF Mono','JetBrains Mono','Cascadia Code',Menlo,Consolas,monospace"
-SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,sans-serif"
+# Korean needs a system font that actually exists on the viewer's machine — the
+# image proxy blocks webfonts. Mono is kept for digits only; Hangul in a mono
+# stack falls back unpredictably and looks broken.
+SANS = ("'Pretendard','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',"
+        "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif")
+MONO = "ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace"
 
 
 # ---------------------------------------------------------------- helpers
@@ -86,9 +93,13 @@ def shade(hex_color: str, factor: float) -> str:
 
 
 def human(n: float) -> str:
-    for unit, div in (("T", 1e12), ("B", 1e9), ("M", 1e6), ("K", 1e3)):
+    """Korean reading units — 조/억/만 — not B/M/K."""
+    for unit, div in (("조", 1e12), ("억", 1e8), ("만", 1e4)):
         if n >= div:
-            return f"{n / div:.2f}".rstrip("0").rstrip(".") + unit
+            v = n / div
+            # 2912.7만 reads worse than 2913만; keep a decimal only when small
+            s = f"{v:,.0f}" if v >= 100 else f"{v:.1f}".rstrip("0").rstrip(".")
+            return s + unit
     return f"{n:,.0f}"
 
 
@@ -190,43 +201,42 @@ def load():
 
 # ---------------------------------------------------------------- 1. hero
 def build_hero(D):
-    H = 440
+    H = 300
     s, tm = D["summary"], D["time"]
     total = s["totalTokens"]
     digits = f"{total:,}"
 
-    # full-range skyline silhouette across the bottom
     days = D["days"]
     mx = max(d["totals"]["tokens"] for d in days) or 1
     bw = W / len(days)
     bars = []
     for i, d in enumerate(days):
-        h = 8 + (d["totals"]["tokens"] / mx) ** 0.5 * 128
+        h = 6 + (d["totals"]["tokens"] / mx) ** 0.5 * 92
         bars.append(
-            f'<rect x="{i * bw:.2f}" y="{H - h:.2f}" width="{bw - 1.1:.2f}" '
+            f'<rect x="{i * bw:.2f}" y="{H - h:.2f}" width="{bw - 0.9:.2f}" '
             f'height="{h:.2f}" rx="1" fill="url(#sky)"/>'
         )
 
     chips = [
-        (f'{s["activeDays"]}/{s["totalDays"]}', "DAYS ACTIVE", LIME),
-        (f'{len(s["clients"])}', "RUNTIMES", CYAN),
-        (f'{len(s["models"])}', "MODELS", VIOLET),
-        (f'{tm.get("sessionCount", 0):,}', "SESSIONS", PINK),
-        (f'{tm.get("totalActiveTimeMs", 0) / 3.6e6:,.0f}h', "AGENT UPTIME", AMBER),
+        (f'{s["activeDays"]}/{s["totalDays"]}', "활동일", LIME),
+        (f'{len(s["clients"])}', "런타임", CYAN),
+        (f'{len(s["models"])}', "모델", VIOLET),
+        (f'{tm.get("sessionCount", 0):,}', "세션", PINK),
+        (f'{tm.get("totalActiveTimeMs", 0) / 3.6e6:,.0f}시간', "가동", AMBER),
     ]
-    cw, cx = 218.0, 64.0
+    cw, cx = 128.0, 30.0
     chip_svg = []
     for i, (big, lab, col) in enumerate(chips):
         x = cx + i * cw
         chip_svg.append(
-            f'<g transform="translate({x:.0f},344)">'
-            f'<rect x="0" y="0" width="2" height="34" fill="{col}"/>'
-            f'<text x="13" y="16" font-family="{SANS}" font-size="23" font-weight="800" fill="{TEXT}">{big}</text>'
-            f'<text x="13" y="30" font-family="{MONO}" font-size="10" fill="{MUTED}" letter-spacing="1.6">{lab}</text>'
+            f'<g transform="translate({x:.0f},232)">'
+            f'<rect x="0" y="0" width="2.5" height="32" fill="{col}"/>'
+            f'<text x="11" y="15" font-family="{MONO}" font-size="17" font-weight="700" fill="{TEXT}">{big}</text>'
+            f'<text x="11" y="29" font-family="{SANS}" font-size="11.5" fill="{MUTED}">{lab}</text>'
             f"</g>"
         )
 
-    return_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="{digits} AI tokens consumed, measured not estimated">
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="총 소비한 AI 토큰 {digits}">
 <defs>
   {grid_defs("h")}
   <linearGradient id="void" x1="0" y1="0" x2="0.85" y2="1">
@@ -241,89 +251,33 @@ def build_hero(D):
     <stop offset="0%" stop-color="#ffffff"/><stop offset="30%" stop-color="{CYAN}"/>
     <stop offset="66%" stop-color="{VIOLET}"/><stop offset="100%" stop-color="{PINK}"/>
   </linearGradient>
-  <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%" stop-color="{CYAN}" stop-opacity="0"/>
-    <stop offset="50%" stop-color="{CYAN}" stop-opacity="0.5"/>
-    <stop offset="100%" stop-color="{CYAN}" stop-opacity="0"/>
-  </linearGradient>
   <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="{INK}" stop-opacity="0"/>
-    <stop offset="26%" stop-color="{INK}" stop-opacity="0.82"/>
-    <stop offset="100%" stop-color="{INK}" stop-opacity="0.92"/>
+    <stop offset="26%" stop-color="{INK}" stop-opacity="0.84"/>
+    <stop offset="100%" stop-color="{INK}" stop-opacity="0.93"/>
   </linearGradient>
   <radialGradient id="bloom" cx="0.5" cy="0.5" r="0.5">
     <stop offset="0%" stop-color="{VIOLET}" stop-opacity="0.30"/><stop offset="100%" stop-color="{VIOLET}" stop-opacity="0"/>
   </radialGradient>
 </defs>
 
-<rect width="{W}" height="{H}" rx="18" fill="url(#void)"/>
-<rect width="{W}" height="{H}" rx="18" fill="url(#grid_h)" opacity="0.5"/>
-<ellipse cx="880" cy="150" rx="440" ry="230" fill="url(#bloom)"/>
+<rect width="{W}" height="{H}" rx="14" fill="url(#void)"/>
+<rect width="{W}" height="{H}" rx="14" fill="url(#grid_h)" opacity="0.5"/>
+<ellipse cx="500" cy="105" rx="290" ry="160" fill="url(#bloom)"/>
 <g>{"".join(bars)}</g>
 
-<!-- corner marks -->
-<path d="M28,52 v-16 a6,6 0 0 1 6,-6 h18" fill="none" stroke="{DIM}" stroke-width="1.2"/>
-<path d="M{W - 28},52 v-16 a6,6 0 0 0 -6,-6 h-18" fill="none" stroke="{DIM}" stroke-width="1.2"/>
+<text x="30" y="42" font-family="{MONO}" font-size="12" fill="{MUTED}" letter-spacing="2">kiminho · @inhodev</text>
+<text x="{W - 30}" y="42" text-anchor="end" font-family="{MONO}" font-size="12" fill="{DIM}">{D["range"]["start"]} → {D["range"]["end"]}</text>
 
-<text x="64" y="62" font-family="{MONO}" font-size="11" fill="{MUTED}" letter-spacing="3.4">KIMINHO — @INHODEV</text>
-<g transform="translate({W - 64},62)" text-anchor="end">
-  <text font-family="{MONO}" font-size="11" fill="{DIM}" letter-spacing="3.4">{D["range"]["start"]} → {D["range"]["end"]}</text>
-</g>
+<text x="30" y="86" font-family="{SANS}" font-size="14" font-weight="700" fill="{CYAN}" letter-spacing="1.5">총 소비한 AI 토큰</text>
+<text x="30" y="146" font-family="{MONO}" font-size="46" font-weight="700" fill="url(#num)" letter-spacing="-1">{digits}</text>
+<text x="30" y="176" font-family="{SANS}" font-size="13" fill="{MUTED}">= {human(total)}개 · 이 컴퓨터의 세션 로그 전수 집계, 추정이 아니라 실측</text>
 
-<text x="64" y="132" font-family="{MONO}" font-size="12" fill="{CYAN}" letter-spacing="5">TOTAL AI TOKENS CONSUMED</text>
-<text x="64" y="238" font-family="{MONO}" font-size="82" font-weight="700" fill="url(#num)" letter-spacing="-2">{digits}</text>
-<text x="64" y="278" font-family="{MONO}" font-size="13" fill="{MUTED}" letter-spacing="1.4">parsed out of every session log on this machine — measured, not estimated</text>
-
-<rect x="0" y="318" width="{W}" height="122" fill="url(#scrim)"/>
-<rect x="64" y="304" width="{W - 128}" height="1" fill="{LINE}"/>
-<rect x="64" y="303.5" width="380" height="2" fill="url(#beam)"/>
-
+<rect x="0" y="208" width="{W}" height="92" fill="url(#scrim)"/>
+<rect x="30" y="212" width="{W - 60}" height="1" fill="{LINE}"/>
 {"".join(chip_svg)}
 </svg>"""
-    write("hero.svg", return_svg)
-
-
-# ---------------------------------------------------------------- 2. ticker
-def build_ticker(D):
-    H = 62
-    models = sorted(D["by_model"].items(), key=lambda kv: -kv[1])
-
-    # Static row: fit as many top models as the width allows, then say how many
-    # were left out. GitHub strips SVG animation, so a marquee would render as a
-    # frozen half-visible row — a packed static strip is both safer and denser.
-    PADX, GAP, TAIL = 20.0, 9.0, 132.0
-    pills, x = [], PADX
-    shown = 0
-    for name, v in models:
-        label = name.split("/")[-1]
-        w = 30 + len(label) * 8.0 + 66
-        if x + w > W - PADX - TAIL:
-            break
-        pills.append(
-            f'<g transform="translate({x:.1f},14)">'
-            f'<rect width="{w:.1f}" height="34" rx="17" fill="#0c1220" stroke="{LINE}"/>'
-            f'<circle cx="15" cy="17" r="3" fill="{CYAN}" opacity="0.8"/>'
-            f'<text x="26" y="21.5" font-family="{MONO}" font-size="12.5" fill="{TEXT}">{esc(label)}</text>'
-            f'<text x="{w - 14:.1f}" y="21.5" text-anchor="end" font-family="{MONO}" font-size="11" fill="{DIM}">{human(v)}</text>'
-            f"</g>"
-        )
-        x += w + GAP
-        shown += 1
-
-    rest = len(models) - shown
-    tail = (
-        f'<text x="{W - PADX:.0f}" y="35.5" text-anchor="end" font-family="{MONO}" font-size="12" fill="{MUTED}">'
-        f'+{rest} more models</text>'
-        if rest > 0
-        else ""
-    )
-
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="{len(models)} models driven, ranked by volume">
-<rect width="{W}" height="{H}" rx="12" fill="{INK}"/>
-{"".join(pills)}
-{tail}
-</svg>"""
-    write("ticker.svg", svg)
+    write("hero.svg", svg)
 
 
 # ---------------------------------------------------------------- 3. skyline
@@ -341,7 +295,7 @@ def build_skyline(D):
     TW, TH = 46.0, 23.0
     HW, HH = TW / 2, TH / 2
     MAXH = 230.0
-    PAD, HEAD, FOOT = 40, 96, 66
+    PAD, HEAD, FOOT = 26, 82, 58
 
     cells = []
     for col in range(cols):
@@ -387,35 +341,45 @@ def build_skyline(D):
             f"</g>"
         )
 
-    months, seen = [], set()
+    month_pts, seen = [], set()
     for _, col, row, d, tok, _ in cells:
         key = d.strftime("%Y-%m")
         if key in seen or not (first <= d <= last) or d.day > 7:
             continue
         seen.add(key)
-        sx, sy = (col - rows + 1) * HW, (col + rows - 1) * HH
-        tx, ty2 = sx + 6, sy + 38
-        track(tx - 14, ty2 - 11, tx + 30, ty2 + 5)
+        sx = (col - rows + 1) * HW
+        sy = (col + rows - 1) * HH
+        month_pts.append((sx + 6, sy + 30, int(d.strftime("%m"))))
+
+    # The calendar grid is as wide as the date range makes it. If that exceeds
+    # the card, scale the whole plot down rather than letting towers run off the
+    # edge — a clipped skyline reads as a bug.
+    gw, gh = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    k = min(1.0, (W - PAD * 2) / gw)
+    H = int(gh * k + HEAD + FOOT)
+    dx = (W - gw * k) / 2 - bbox[0] * k
+    dy = HEAD - bbox[1] * k
+
+    # Labels sit outside the scaled group, so shrinking the plot to fit never
+    # shrinks the type with it.
+    months = []
+    for sx, sy, mm in month_pts:
+        tx, ty2 = sx * k + dx, sy * k + dy
         months.append(
-            f'<text x="{tx:.1f}" y="{ty2:.1f}" font-family="{MONO}" font-size="11" fill="{DIM}" '
-            f'transform="rotate(26.57 {tx:.1f} {ty2:.1f})">{d.strftime("%b").upper()}</text>'
+            f'<text x="{tx:.1f}" y="{ty2:.1f}" font-family="{SANS}" font-size="11.5" fill="{DIM}" '
+            f'transform="rotate(26.57 {tx:.1f} {ty2:.1f})">{mm}월</text>'
         )
 
-    gw, gh = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    H = int(gh + HEAD + FOOT)
-    dx = (W - gw) / 2 - bbox[0]
-    dy = HEAD - bbox[1]
-
     legend = []
-    lx0 = W - 96 - len(HEAT) * 28
+    lx0 = W - 92 - len(HEAT) * 20
     for i, c in enumerate(HEAT):
-        x = lx0 + i * 28
-        legend.append(f'<path d="M{x},{H - 40} l10,5 l-10,5 l-10,-5 Z" fill="{shade(c, 1.2)}"/>')
+        x = lx0 + i * 20
+        legend.append(f'<path d="M{x},{H - 29} l8,4 l-8,4 l-8,-4 Z" fill="{shade(c, 1.2)}"/>')
 
     s, tm = D["summary"], D["time"]
     peak = max(days, key=lambda d: d["totals"]["tokens"])
 
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Isometric skyline of daily AI token usage">
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="일자별 AI 토큰 사용량 아이소메트릭 스카이라인">
 <defs>
   {grid_defs("s")}
   <linearGradient id="deep" x1="0" y1="0" x2="0.7" y2="1">
@@ -426,99 +390,108 @@ def build_skyline(D):
   </radialGradient>
 </defs>
 
-<rect width="{W}" height="{H}" rx="18" fill="url(#deep)" stroke="{LINE}"/>
-<rect width="{W}" height="{H}" rx="18" fill="url(#grid_s)" opacity="0.4"/>
-<rect width="{W}" height="{H}" rx="18" fill="url(#halo)"/>
+<rect width="{W}" height="{H}" rx="14" fill="url(#deep)" stroke="{LINE}"/>
+<rect width="{W}" height="{H}" rx="14" fill="url(#grid_s)" opacity="0.4"/>
+<rect width="{W}" height="{H}" rx="14" fill="url(#halo)"/>
 
-<text x="44" y="46" font-family="{SANS}" font-size="21" font-weight="800" fill="{TEXT}">TOKEN SKYLINE</text>
-<text x="44" y="68" font-family="{MONO}" font-size="11.5" fill="{MUTED}">one tower = one day of agent work · height is log-scaled</text>
-<text x="{W - 44}" y="46" text-anchor="end" font-family="{SANS}" font-size="21" font-weight="800" fill="{CYAN}">{human(s["totalTokens"])}</text>
-<text x="{W - 44}" y="68" text-anchor="end" font-family="{MONO}" font-size="11.5" fill="{DIM}">{s["activeDays"]}/{s["totalDays"]} active days · {tm.get("sessionCount", 0):,} sessions</text>
+<text x="28" y="40" font-family="{SANS}" font-size="17" font-weight="800" fill="{TEXT}">토큰 스카이라인</text>
+<text x="28" y="60" font-family="{SANS}" font-size="12.5" fill="{MUTED}">탑 하나 = 하루치 에이전트 작업 · 높이는 로그 스케일</text>
+<text x="{W - 28}" y="40" text-anchor="end" font-family="{SANS}" font-size="19" font-weight="800" fill="{CYAN}">{human(s["totalTokens"])}</text>
+<text x="{W - 28}" y="60" text-anchor="end" font-family="{SANS}" font-size="12" fill="{DIM}">{s["activeDays"]}/{s["totalDays"]}일 활동 · {tm.get("sessionCount", 0):,}세션</text>
 
-<g transform="translate({dx:.1f},{dy:.1f})">{"".join(boxes)}{"".join(months)}</g>
+<g transform="translate({dx:.2f},{dy:.2f}) scale({k:.4f})">{"".join(boxes)}</g>
+{"".join(months)}
 
-<text x="44" y="{H - 32}" font-family="{MONO}" font-size="11.5" fill="{MUTED}">PEAK {peak["date"]} — {human(peak["totals"]["tokens"])} in a single day</text>
-<text x="{lx0 - 22}" y="{H - 31}" text-anchor="end" font-family="{MONO}" font-size="11" fill="{DIM}">QUIET</text>
+<text x="28" y="{H - 26}" font-family="{SANS}" font-size="12.5" fill="{MUTED}">최고 기록 {peak["date"]} — 하루에 {human(peak["totals"]["tokens"])}</text>
+<text x="{lx0 - 20}" y="{H - 25}" text-anchor="end" font-family="{SANS}" font-size="11.5" fill="{DIM}">한산</text>
 {"".join(legend)}
-<text x="{W - 44}" y="{H - 31}" text-anchor="end" font-family="{MONO}" font-size="11" fill="{DIM}">ON FIRE</text>
+<text x="{W - 28}" y="{H - 25}" text-anchor="end" font-family="{SANS}" font-size="11.5" fill="{DIM}">폭주</text>
 </svg>"""
     write("skyline.svg", svg)
 
 
 # ---------------------------------------------------------------- 4. HUD
 def build_hud(D):
+    """Runtime split on top, monthly burn underneath.
+
+    Two columns inside 700px left each chart ~330px, which is too narrow for
+    eight month labels and a legible token figure. Stacked full-width reads far
+    better at profile-column size.
+    """
     order = sorted(D["by_client"].items(), key=lambda kv: -kv[1])
     total = sum(v for _, v in order)
     months = sorted(D["by_month"].items())
 
-    H = 460
-    col_w = (W - 44 * 2 - 30) / 2
-    lx, rx = 44.0, 44.0 + col_w + 30
+    pad = 28.0
+    cw = W - pad * 2
+    row_h = 34
+    top_h = 74 + len(order) * row_h + 16
+    m_top = top_h + 76
+    m_ph = 132
+    H = int(m_top + m_ph + 62)
 
-    # ---- left: runtime split
-    left = [
-        f'<text x="{lx}" y="46" font-family="{SANS}" font-size="15" font-weight="700" fill="{TEXT}">WHERE THE TOKENS WENT</text>'
+    out = [
+        f'<text x="{pad}" y="36" font-family="{SANS}" font-size="16" font-weight="800" fill="{TEXT}">토큰이 어디로 갔나</text>',
+        f'<text x="{W - pad}" y="36" text-anchor="end" font-family="{SANS}" font-size="12" fill="{DIM}">런타임 {len(order)}개 · 모델 {len(D["by_model"])}종</text>',
     ]
-    sx, bar_w = lx, col_w
+
+    sx = pad
     for k, v in order:
-        seg = bar_w * v / total
-        left.append(
-            f'<rect x="{sx:.2f}" y="62" width="{max(seg - 1.5, 1.2):.2f}" height="10" rx="3" fill="{CLIENT_COLOR.get(k, MUTED)}"/>'
+        seg = cw * v / total
+        out.append(
+            f'<rect x="{sx:.2f}" y="52" width="{max(seg - 1.5, 1.2):.2f}" height="9" rx="3" fill="{CLIENT_COLOR.get(k, MUTED)}"/>'
         )
         sx += seg
 
-    row_h = 46
     mxc = order[0][1]
+    bar_x = pad + 118
+    bar_w = cw - 118 - 118
     for i, (k, v) in enumerate(order):
-        y = 104 + i * row_h
+        y = 86 + i * row_h
         color = CLIENT_COLOR.get(k, MUTED)
-        w = max(3.0, (col_w - 150) * v / mxc)
-        left.append(
-            f'<g><circle cx="{lx + 5}" cy="{y + 9}" r="4" fill="{color}"/>'
-            f'<text x="{lx + 18}" y="{y + 13}" font-family="{MONO}" font-size="12.5" fill="{TEXT}">{esc(CLIENT_LABEL.get(k, k))}</text>'
-            f'<text x="{lx + col_w}" y="{y + 13}" text-anchor="end" font-family="{MONO}" font-size="12" fill="{MUTED}">{human(v)}</text>'
-            f'<rect x="{lx}" y="{y + 20}" width="{col_w}" height="6" rx="3" fill="#0e1524"/>'
-            f'<rect x="{lx}" y="{y + 20}" width="{w:.1f}" height="6" rx="3" fill="{color}"/>'
-            f'<text x="{lx + col_w}" y="{y + 32}" text-anchor="end" font-family="{MONO}" font-size="10.5" fill="{DIM}">{v / total * 100:.1f}%</text>'
-            f"</g>"
+        w = max(3.0, bar_w * v / mxc)
+        out.append(
+            f'<g><circle cx="{pad + 5}" cy="{y + 8}" r="4" fill="{color}"/>'
+            f'<text x="{pad + 17}" y="{y + 12}" font-family="{SANS}" font-size="13" fill="{TEXT}">{esc(CLIENT_LABEL.get(k, k))}</text>'
+            f'<rect x="{bar_x}" y="{y + 3}" width="{bar_w}" height="11" rx="5.5" fill="#0e1524"/>'
+            f'<rect x="{bar_x}" y="{y + 3}" width="{w:.1f}" height="11" rx="5.5" fill="{color}"/>'
+            f'<text x="{W - pad}" y="{y + 12}" text-anchor="end" font-family="{MONO}" font-size="12.5" fill="{MUTED}">'
+            f'{human(v)}  {v / total * 100:.1f}%</text></g>'
         )
 
-    # ---- right: monthly burn
-    right = [
-        f'<text x="{rx}" y="46" font-family="{SANS}" font-size="15" font-weight="700" fill="{TEXT}">MONTHLY BURN</text>',
-        f'<text x="{rx + col_w}" y="46" text-anchor="end" font-family="{MONO}" font-size="10.5" fill="{DIM}">tokens · est. cost</text>',
-    ]
-    pt, pb = 96, 78
-    ph = H - pt - pb
-    mxm = max(v[0] for _, v in months)
-    slot = col_w / len(months)
-    bw = min(56.0, slot * 0.6)
-    for i, (m, v) in enumerate(months):
-        cx = rx + slot * (i + 0.5)
-        h = ph * (v[0] / mxm)
-        y = pt + ph - h
-        right.append(
-            f'<g><rect x="{cx - bw / 2:.1f}" y="{y:.1f}" width="{bw:.1f}" '
-            f'height="{max(h, 2):.1f}" rx="5" fill="url(#mg)"/>'
-            f'<text x="{cx:.1f}" y="{y - 9:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{CYAN}">{human(v[0])}</text>'
-            f'<text x="{cx:.1f}" y="{pt + ph + 20:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{MUTED}">{m[5:]}</text>'
-            f'<text x="{cx:.1f}" y="{pt + ph + 36:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{DIM}">${v[1]:,.0f}</text>'
-            f"</g>"
-        )
-    right.append(
-        f'<line x1="{rx}" y1="{pt + ph:.1f}" x2="{rx + col_w}" y2="{pt + ph:.1f}" stroke="{LINE}"/>'
+    out.append(f'<line x1="{pad}" y1="{top_h + 14}" x2="{W - pad}" y2="{top_h + 14}" stroke="{LINE}"/>')
+    out.append(
+        f'<text x="{pad}" y="{top_h + 44}" font-family="{SANS}" font-size="16" font-weight="800" fill="{TEXT}">월별 소비량</text>'
+    )
+    out.append(
+        f'<text x="{pad}" y="{top_h + 62}" font-family="{SANS}" font-size="11.5" fill="{DIM}">막대 = 토큰 · 아래 숫자는 추정 비용</text>'
     )
 
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Runtime split and monthly token burn">
+    mxm = max(v[0] for _, v in months)
+    slot = cw / len(months)
+    bw = min(46.0, slot * 0.58)
+    for i, (m, v) in enumerate(months):
+        cx = pad + slot * (i + 0.5)
+        h = m_ph * (v[0] / mxm)
+        y = m_top + m_ph - h
+        out.append(
+            f'<g><rect x="{cx - bw / 2:.1f}" y="{y:.1f}" width="{bw:.1f}" '
+            f'height="{max(h, 2):.1f}" rx="4" fill="url(#mg)"/>'
+            f'<text x="{cx:.1f}" y="{y - 7:.1f}" text-anchor="middle" font-family="{MONO}" font-size="11" fill="{CYAN}">{human(v[0])}</text>'
+            f'<text x="{cx:.1f}" y="{m_top + m_ph + 19:.1f}" text-anchor="middle" font-family="{SANS}" font-size="12" fill="{MUTED}">{int(m[5:])}월</text>'
+            f'<text x="{cx:.1f}" y="{m_top + m_ph + 35:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{DIM}">${v[1]:,.0f}</text>'
+            f"</g>"
+        )
+    out.append(f'<line x1="{pad}" y1="{m_top + m_ph:.1f}" x2="{W - pad}" y2="{m_top + m_ph:.1f}" stroke="{LINE}"/>')
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="런타임별 토큰 분포와 월별 소비량">
 <defs>
   <linearGradient id="mg" x1="0" y1="1" x2="0" y2="0">
     <stop offset="0%" stop-color="{VIOLET}" stop-opacity="0.30"/><stop offset="100%" stop-color="{CYAN}"/>
   </linearGradient>
 </defs>
-<rect width="{W}" height="{H}" rx="18" fill="{PANEL}" stroke="{LINE}"/>
-<line x1="{rx - 15}" y1="30" x2="{rx - 15}" y2="{H - 30}" stroke="{LINE}"/>
-{"".join(left)}
-{"".join(right)}
+<rect width="{W}" height="{H}" rx="14" fill="{PANEL}" stroke="{LINE}"/>
+{"".join(out)}
 </svg>"""
     write("hud.svg", svg)
 
@@ -531,10 +504,9 @@ IMG_START, IMG_END = "<!-- IMAGES:START -->", "<!-- IMAGES:END -->"
 # new content = the old picture served indefinitely. Appending a content hash
 # gives every rebuild a fresh URL.
 CARDS = [
-    ("hero.svg", "Total AI tokens consumed — measured, not estimated"),
-    ("ticker.svg", "Models driven, ranked by volume"),
-    ("skyline.svg", "Isometric skyline — one tower per day of agent work"),
-    ("hud.svg", "Runtime split and monthly token burn"),
+    ("hero.svg", "총 소비한 AI 토큰 — 추정이 아니라 실측"),
+    ("skyline.svg", "토큰 스카이라인 — 탑 하나가 하루치 작업"),
+    ("hud.svg", "런타임별 분포와 월별 소비량"),
 ]
 
 
@@ -576,27 +548,27 @@ def inject_readme(D, stats):
     cf = D["factors"].get("codex")
 
     rows = [
-        ("Window", f'`{r["start"]} → {r["end"]}` — {stats["totalDays"]} days, **{stats["activeDays"]} of them active**'),
-        ("Tokens", f'**{stats["totalTokens"]:,}**'),
-        ("Messages", f'{stats["messages"]:,}'),
-        ("Sessions", f'{stats["sessions"]:,}'),
-        ("Agent uptime", f'{hours:,.0f} h — roughly **{hours / 24:.0f} days** of compute inside {stats["totalDays"]} calendar days'),
-        ("Longest unbroken run", f'{stats["longestContinuousHours"]:,.1f} h'),
-        ("Peak concurrency", f'{stats["maxConcurrentSessions"]} sessions at once'),
-        ("Biggest single day", f'`{peak["date"]}` — {human(peak["totals"]["tokens"])} tokens'),
-        ("Distinct models", f'{stats["models"]}, across {len(stats["clients"])} runtimes'),
+        ("기간", f'`{r["start"]} → {r["end"]}` — {stats["totalDays"]}일 중 **{stats["activeDays"]}일 활동**'),
+        ("총 토큰", f'**{stats["totalTokens"]:,}** ({human(stats["totalTokens"])})'),
+        ("메시지", f'{stats["messages"]:,}'),
+        ("세션", f'{stats["sessions"]:,}'),
+        ("에이전트 가동시간", f'{hours:,.0f}시간 — 138일 안에 **약 {hours / 24:.0f}일치** 연산'),
+        ("최장 연속 가동", f'{stats["longestContinuousHours"]:,.1f}시간'),
+        ("최대 동시 세션", f'{stats["maxConcurrentSessions"]}개'),
+        ("하루 최고 기록", f'`{peak["date"]}` — {human(peak["totals"]["tokens"])}'),
+        ("모델 / 런타임", f'{stats["models"]}종 / {len(stats["clients"])}개'),
     ]
     if cf:
         rows.append(
-            ("Codex measured coverage",
-             f'**{cf["measured"] / cf["target"] * 100:.2f}%** — {cf["measured"]:,} of {cf["target"]:,} '
-             f'reconstructed from local logs day by day')
+            ("Codex 실측 커버리지",
+             f'**{cf["measured"] / cf["target"] * 100:.2f}%** — 공식 {cf["target"]:,} 중 '
+             f'{cf["measured"]:,}을 로컬 로그에서 일자별로 복원')
         )
     table = "| | |\n|---|---|\n" + "\n".join(f"| {k} | {v} |" for k, v in rows)
 
     block = (
         f"{START}\n\n{table}\n\n"
-        f"<sub>Written by <code>scripts/build_assets.py</code>. Do not edit by hand — it will be overwritten.</sub>\n\n"
+        f"<sub><code>scripts/build_assets.py</code>가 생성한 표입니다. 직접 고쳐도 다음 빌드에 덮어써집니다.</sub>\n\n"
         f"{END}"
     )
     head, _, rest = text.partition(START)
@@ -611,7 +583,6 @@ def main():
     D = load()
     OUT.mkdir(exist_ok=True)
     build_hero(D)
-    build_ticker(D)
     build_skyline(D)
     build_hud(D)
 
