@@ -1,0 +1,34 @@
+{
+  "range": {
+    "start": "2026-01-07",
+    "end": "2026-08-05"
+  },
+  "totalTokens": 34004134923,
+  "totalCostUsd": 27933.34,
+  "activeDays": 138,
+  "totalDays": 138,
+  "sessions": 10511,
+  "messages": 246787,
+  "activeHours": 2133.6,
+  "longestContinuousHours": 146.7,
+  "maxConcurrentSessions": 22,
+  "models": 45,
+  "clients": [
+    "antigravity-cli",
+    "claude",
+    "codex",
+    "gjc",
+    "hermes",
+    "kilo",
+    "opencode"
+  ],
+  "byClient": {
+    "opencode": 238876173,
+    "codex": 29070000007,
+    "kilo": 20905631,
+    "hermes": 340849490,
+    "gjc": 43123553,
+    "claude": 4289603790,
+    "antigravity-cli": 776279
+  }
+}

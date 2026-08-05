@@ -1,0 +1,60 @@
+name: refresh profile assets
+
+# Rebuilds every SVG from data/graph.json.
+#
+# NOTE: GitHub's runners cannot see your laptop, so they cannot rescan ~/.codex.
+# The scan step runs locally (`bash scripts/refresh.sh`) and commits a fresh
+# data/graph.json; this workflow exists so the SVGs are always in sync with
+# whatever graph.json is committed, and so the repo rebuilds itself if the
+# generator changes.
+
+on:
+  push:
+    paths:
+      - "data/**"
+      - "scripts/build_assets.py"
+      - ".github/workflows/refresh.yml"
+  schedule:
+    - cron: "17 20 * * *" # 05:17 KST daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rebuild SVGs
+        run: python3 scripts/build_assets.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets data/stats.json
+          git diff --staged --quiet || git commit -m "chore: rebuild profile assets"
+          git push
+
+  # 3D graph of GitHub *commits* (separate from the token skyline above)
+  commits-3d:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yoshi389111/github-profile-3d-contrib@v0.7.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERNAME: ${{ github.repository_owner }}
+      - name: Commit 3D contrib
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A profile-3d-contrib
+          git diff --staged --quiet || git commit -m "chore: rebuild 3d commit graph"
+          git push
