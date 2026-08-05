@@ -30,5 +30,10 @@
     "gjc": 43123553,
     "claude": 4289603790,
     "antigravity-cli": 776279
+  },
+  "codexAnchor": {
+    "factor": 1.0359089919350442,
+    "measured": 28062310711,
+    "target": 29070000000
   }
 }
