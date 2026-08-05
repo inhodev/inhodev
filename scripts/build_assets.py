@@ -15,6 +15,7 @@ Design rules for GitHub READMEs:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import defaultdict
 from datetime import date
@@ -517,6 +518,41 @@ def build_hud(D):
 
 # ---------------------------------------------------------------- README
 START, END = "<!-- STATS:START -->", "<!-- STATS:END -->"
+IMG_START, IMG_END = "<!-- IMAGES:START -->", "<!-- IMAGES:END -->"
+
+# GitHub proxies README images through camo, which caches by URL. Same path +
+# new content = the old picture served indefinitely. Appending a content hash
+# gives every rebuild a fresh URL.
+CARDS = [
+    ("hero.svg", "Total AI tokens consumed — measured, not estimated"),
+    ("ticker.svg", "Models driven, ranked by volume"),
+    ("skyline.svg", "Isometric skyline — one tower per day of agent work"),
+    ("hud.svg", "Runtime split and monthly token burn"),
+]
+
+
+def inject_images():
+    path = ROOT / "README.md"
+    if not path.exists():
+        return
+    text = path.read_text(encoding="utf-8")
+    if IMG_START not in text or IMG_END not in text:
+        print("  README image markers missing — skipped")
+        return
+
+    tags = []
+    for name, alt in CARDS:
+        f = OUT / name
+        if not f.exists():
+            continue
+        h = hashlib.sha1(f.read_bytes()).hexdigest()[:10]
+        tags.append(f'<img src="./assets/{name}?v={h}" alt="{alt}" width="100%">')
+
+    block = f"{IMG_START}\n\n" + "\n\n".join(tags) + f"\n\n{IMG_END}"
+    head, _, rest = text.partition(IMG_START)
+    _, _, tail = rest.partition(IMG_END)
+    path.write_text(head + block + tail, encoding="utf-8")
+    print(f"  README image tags rehashed ({len(tags)} cards)")
 
 
 def inject_readme(D, stats):
@@ -594,6 +630,7 @@ def main():
     )
     print("  data/stats.json")
     inject_readme(D, stats)
+    inject_images()
     print(f"\n  {human(s['totalTokens'])} tokens · {s['activeDays']} active days · {len(s['models'])} models")
 
 

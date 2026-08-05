@@ -1,10 +1,14 @@
-<img src="./assets/hero.svg" alt="34,004,134,923 AI tokens consumed — measured, not estimated" width="100%">
+<!-- IMAGES:START -->
 
-<img src="./assets/ticker.svg" alt="45 models driven, by volume" width="100%">
+<img src="./assets/hero.svg?v=0c1df8527b" alt="Total AI tokens consumed — measured, not estimated" width="100%">
 
-<img src="./assets/skyline.svg" alt="Isometric skyline — every tower is one day of agent work" width="100%">
+<img src="./assets/ticker.svg?v=43a67fc82b" alt="Models driven, ranked by volume" width="100%">
 
-<img src="./assets/hud.svg" alt="Runtime split and monthly token burn" width="100%">
+<img src="./assets/skyline.svg?v=a6710a0e9b" alt="Isometric skyline — one tower per day of agent work" width="100%">
+
+<img src="./assets/hud.svg?v=4dea429660" alt="Runtime split and monthly token burn" width="100%">
+
+<!-- IMAGES:END -->
 
 <!-- STATS:START -->
 
