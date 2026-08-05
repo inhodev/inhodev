@@ -195,12 +195,8 @@ def build_hero(D):
     for i, d in enumerate(days):
         h = 8 + (d["totals"]["tokens"] / mx) ** 0.5 * 128
         bars.append(
-            f'<rect x="{i * bw:.2f}" y="{H - h:.2f}" width="{bw - 1.1:.2f}" height="{h:.2f}" rx="1" fill="url(#sky)">'
-            f'<animate attributeName="height" from="0" to="{h:.2f}" dur="1.1s" '
-            f'begin="{i * 0.006:.3f}s" fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/>'
-            f'<animate attributeName="y" from="{H}" to="{H - h:.2f}" dur="1.1s" '
-            f'begin="{i * 0.006:.3f}s" fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/>'
-            f"</rect>"
+            f'<rect x="{i * bw:.2f}" y="{H - h:.2f}" width="{bw - 1.1:.2f}" '
+            f'height="{h:.2f}" rx="1" fill="url(#sky)"/>'
         )
 
     chips = [
@@ -215,8 +211,7 @@ def build_hero(D):
     for i, (big, lab, col) in enumerate(chips):
         x = cx + i * cw
         chip_svg.append(
-            f'<g transform="translate({x:.0f},344)" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="{1.0 + i * 0.09:.2f}s" fill="freeze"/>'
+            f'<g transform="translate({x:.0f},344)">'
             f'<rect x="0" y="0" width="2" height="34" fill="{col}"/>'
             f'<text x="13" y="16" font-family="{SANS}" font-size="23" font-weight="800" fill="{TEXT}">{big}</text>'
             f'<text x="13" y="30" font-family="{MONO}" font-size="10" fill="{MUTED}" letter-spacing="1.6">{lab}</text>'
@@ -268,17 +263,12 @@ def build_hero(D):
 </g>
 
 <text x="64" y="132" font-family="{MONO}" font-size="12" fill="{CYAN}" letter-spacing="5">TOTAL AI TOKENS CONSUMED</text>
-<text x="64" y="238" font-family="{MONO}" font-size="82" font-weight="700" fill="url(#num)" letter-spacing="-2">{digits}
-  <animate attributeName="opacity" from="0" to="1" dur="0.8s" fill="freeze"/>
-</text>
+<text x="64" y="238" font-family="{MONO}" font-size="82" font-weight="700" fill="url(#num)" letter-spacing="-2">{digits}</text>
 <text x="64" y="278" font-family="{MONO}" font-size="13" fill="{MUTED}" letter-spacing="1.4">parsed out of every session log on this machine — measured, not estimated</text>
 
 <rect x="0" y="318" width="{W}" height="122" fill="url(#scrim)"/>
 <rect x="64" y="304" width="{W - 128}" height="1" fill="{LINE}"/>
-<rect x="64" y="303.5" width="260" height="2" fill="url(#beam)">
-  <animate attributeName="x" values="64;{W - 324};64" dur="7s" repeatCount="indefinite"
-           calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
-</rect>
+<rect x="64" y="303.5" width="380" height="2" fill="url(#beam)"/>
 
 {"".join(chip_svg)}
 </svg>"""
@@ -290,45 +280,40 @@ def build_ticker(D):
     H = 62
     models = sorted(D["by_model"].items(), key=lambda kv: -kv[1])
 
-    items, x = [], 0.0
+    # Static row: fit as many top models as the width allows, then say how many
+    # were left out. GitHub strips SVG animation, so a marquee would render as a
+    # frozen half-visible row — a packed static strip is both safer and denser.
+    PADX, GAP, TAIL = 20.0, 9.0, 132.0
+    pills, x = [], PADX
+    shown = 0
     for name, v in models:
         label = name.split("/")[-1]
         w = 30 + len(label) * 8.0 + 66
-        items.append((label, human(v), x, w))
-        x += w + 10
-    span = x
+        if x + w > W - PADX - TAIL:
+            break
+        pills.append(
+            f'<g transform="translate({x:.1f},14)">'
+            f'<rect width="{w:.1f}" height="34" rx="17" fill="#0c1220" stroke="{LINE}"/>'
+            f'<circle cx="15" cy="17" r="3" fill="{CYAN}" opacity="0.8"/>'
+            f'<text x="26" y="21.5" font-family="{MONO}" font-size="12.5" fill="{TEXT}">{esc(label)}</text>'
+            f'<text x="{w - 14:.1f}" y="21.5" text-anchor="end" font-family="{MONO}" font-size="11" fill="{DIM}">{human(v)}</text>'
+            f"</g>"
+        )
+        x += w + GAP
+        shown += 1
 
-    def run(offset):
-        out = []
-        for label, val, ix, w in items:
-            out.append(
-                f'<g transform="translate({ix + offset:.1f},14)">'
-                f'<rect width="{w:.1f}" height="34" rx="17" fill="#0c1220" stroke="{LINE}"/>'
-                f'<circle cx="15" cy="17" r="3" fill="{CYAN}" opacity="0.75"/>'
-                f'<text x="26" y="21.5" font-family="{MONO}" font-size="12.5" fill="{TEXT}">{esc(label)}</text>'
-                f'<text x="{w - 14:.1f}" y="21.5" text-anchor="end" font-family="{MONO}" font-size="11" fill="{DIM}">{val}</text>'
-                f"</g>"
-            )
-        return "".join(out)
+    rest = len(models) - shown
+    tail = (
+        f'<text x="{W - PADX:.0f}" y="35.5" text-anchor="end" font-family="{MONO}" font-size="12" fill="{MUTED}">'
+        f'+{rest} more models</text>'
+        if rest > 0
+        else ""
+    )
 
-    dur = max(28, span / 46)
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="{len(models)} models driven, by volume">
-<defs>
-  <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%" stop-color="{INK}"/><stop offset="6%" stop-color="{INK}" stop-opacity="0"/>
-    <stop offset="94%" stop-color="{INK}" stop-opacity="0"/><stop offset="100%" stop-color="{INK}"/>
-  </linearGradient>
-  <clipPath id="clipT"><rect width="{W}" height="{H}" rx="12"/></clipPath>
-</defs>
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="{len(models)} models driven, ranked by volume">
 <rect width="{W}" height="{H}" rx="12" fill="{INK}"/>
-<g clip-path="url(#clipT)">
-  <g>
-    <animateTransform attributeName="transform" type="translate" from="0,0" to="{-span:.1f},0"
-                      dur="{dur:.0f}s" repeatCount="indefinite"/>
-    {run(0)}{run(span)}
-  </g>
-</g>
-<rect width="{W}" height="{H}" rx="12" fill="url(#fade)"/>
+{"".join(pills)}
+{tail}
 </svg>"""
     write("ticker.svg", svg)
 
@@ -385,12 +370,8 @@ def build_skyline(D):
         ty = sy - h
         track(sx - HW, ty, sx + HW, sy + TH)
 
-        delay = 0.35 + col * 0.028
         boxes.append(
-            f'<g opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="{delay:.2f}s" fill="freeze"/>'
-            f'<animateTransform attributeName="transform" type="translate" from="0 30" to="0 0" dur="0.7s" '
-            f'begin="{delay:.2f}s" fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/>'
+            f"<g>"
             f'<path d="M{sx - HW:.1f},{ty + HH:.1f} l{HW:.1f},{HH:.1f} l0,{h:.1f} l{-HW:.1f},{-HH:.1f} Z" fill="{left_c}"/>'
             f'<path d="M{sx + HW:.1f},{ty + HH:.1f} l{-HW:.1f},{HH:.1f} l0,{h:.1f} l{HW:.1f},{-HH:.1f} Z" fill="{right_c}"/>'
             f'<path d="M{sx:.1f},{ty:.1f} l{HW:.1f},{HH:.1f} l{-HW:.1f},{HH:.1f} l{-HW:.1f},{-HH:.1f} Z" '
@@ -489,9 +470,7 @@ def build_hud(D):
             f'<text x="{lx + 18}" y="{y + 13}" font-family="{MONO}" font-size="12.5" fill="{TEXT}">{esc(CLIENT_LABEL.get(k, k))}</text>'
             f'<text x="{lx + col_w}" y="{y + 13}" text-anchor="end" font-family="{MONO}" font-size="12" fill="{MUTED}">{human(v)}</text>'
             f'<rect x="{lx}" y="{y + 20}" width="{col_w}" height="6" rx="3" fill="#0e1524"/>'
-            f'<rect x="{lx}" y="{y + 20}" width="{w:.1f}" height="6" rx="3" fill="{color}">'
-            f'<animate attributeName="width" from="0" to="{w:.1f}" dur="0.9s" begin="{0.3 + i * 0.08:.2f}s" '
-            f'fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/></rect>'
+            f'<rect x="{lx}" y="{y + 20}" width="{w:.1f}" height="6" rx="3" fill="{color}"/>'
             f'<text x="{lx + col_w}" y="{y + 32}" text-anchor="end" font-family="{MONO}" font-size="10.5" fill="{DIM}">{v / total * 100:.1f}%</text>'
             f"</g>"
         )
@@ -511,11 +490,8 @@ def build_hud(D):
         h = ph * (v[0] / mxm)
         y = pt + ph - h
         right.append(
-            f'<g><rect x="{cx - bw / 2:.1f}" y="{y:.1f}" width="{bw:.1f}" height="{max(h, 2):.1f}" rx="5" fill="url(#mg)">'
-            f'<animate attributeName="height" from="0" to="{max(h, 2):.1f}" dur="0.9s" begin="{0.4 + i * 0.07:.2f}s" '
-            f'fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/>'
-            f'<animate attributeName="y" from="{pt + ph}" to="{y:.1f}" dur="0.9s" begin="{0.4 + i * 0.07:.2f}s" '
-            f'fill="freeze" calcMode="spline" keySplines="0.16 1 0.3 1"/></rect>'
+            f'<g><rect x="{cx - bw / 2:.1f}" y="{y:.1f}" width="{bw:.1f}" '
+            f'height="{max(h, 2):.1f}" rx="5" fill="url(#mg)"/>'
             f'<text x="{cx:.1f}" y="{y - 9:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{CYAN}">{human(v[0])}</text>'
             f'<text x="{cx:.1f}" y="{pt + ph + 20:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{MUTED}">{m[5:]}</text>'
             f'<text x="{cx:.1f}" y="{pt + ph + 36:.1f}" text-anchor="middle" font-family="{MONO}" font-size="10.5" fill="{DIM}">${v[1]:,.0f}</text>'
